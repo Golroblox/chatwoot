@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Sync source & compose up on golpan VM (local)
         run: sudo /usr/local/bin/golpan-deploy chatwoot "$GITHUB_WORKSPACE"
