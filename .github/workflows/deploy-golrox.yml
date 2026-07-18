@@ -1,0 +1,30 @@
+name: Deploy Golrox (prod)
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-golrox-chatwoot
+  cancel-in-progress: false
+
+jobs:
+  deploy-prod:
+    runs-on: [self-hosted, prod-vm]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # Chatwoot berjalan dari image pinned (tanpa build). Deploy = sync source
+      # + compose up. .env & docker-compose.golrox.yaml adalah adaptasi lokal
+      # prod — JANGAN ditimpa dari repo.
+      - name: Sync source & compose up (prod VM, local)
+        run: |
+          rsync -a --exclude=.env --exclude=.git --exclude=docker-compose.golrox.yaml ./ /root/prod-services/golrox-chatwoot/
+          cd /root/prod-services/golrox-chatwoot
+          docker compose -f docker-compose.golrox.yaml up -d rails sidekiq
+          sleep 8
+          docker ps --format '{{.Names}}: {{.Status}}' | grep chatwoot
