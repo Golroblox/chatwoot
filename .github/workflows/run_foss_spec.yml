@@ -73,7 +73,10 @@ jobs:
         - /root/ci-cache/chatwoot/bundle:/bundle
         - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
     # Postgres and Redis by service name on the job network: the VM's own PostgreSQL and Redis hold 5432 and 6379.
+    # RAILS_ENV=test so db:create/db:schema:load boot the test env: development starts the listen gem's inotify
+    # watcher, and the container shares root's inotify instance limit with the whole VM (EMFILE).
     env:
+      RAILS_ENV: test
       POSTGRES_HOST: postgres
       REDIS_URL: redis://redis:6379
       BUNDLE_PATH: /bundle
