@@ -9,6 +9,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Golrox: in a container job the runner's default shell is sh; GitHub-hosted runs these steps with bash.
+defaults:
+  run:
+    shell: bash -e {0}
+
 # Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   # Separate linting jobs for faster feedback

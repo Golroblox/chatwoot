@@ -11,6 +11,11 @@ concurrency:
   group: pr-${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
+# Golrox: in a container job the runner's default shell is sh; GitHub-hosted runs these steps with bash.
+defaults:
+  run:
+    shell: bash -e {0}
+
 # Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   deployment_check:
