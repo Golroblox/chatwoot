@@ -22,6 +22,8 @@ jobs:
     # Golrox: VM runner, in a container (no setup-ruby: it needs an Ubuntu host). Gems and the pnpm store stay on the VM.
     container:
       image: ruby:3.4.4-bookworm
+      # Golrox: the VM also runs prod. Low CPU weight: prod wins under contention. OOM: CI dies first, never Postgres.
+      options: --cpu-shares=256 --oom-score-adj=1000
       volumes:
         - /root/ci-cache/chatwoot/bundle:/bundle
         - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
@@ -39,6 +41,8 @@ jobs:
     runs-on: [self-hosted, chatwoot]
     container:
       image: node:24-bookworm
+      # Golrox: the VM also runs prod. Low CPU weight: prod wins under contention. OOM: CI dies first, never Postgres.
+      options: --cpu-shares=256 --oom-score-adj=1000
       volumes:
         - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
     env:
@@ -56,6 +60,8 @@ jobs:
     runs-on: [self-hosted, chatwoot]
     container:
       image: node:24-bookworm
+      # Golrox: the VM also runs prod. Low CPU weight: prod wins under contention. OOM: CI dies first, never Postgres.
+      options: --cpu-shares=256 --oom-score-adj=1000
       volumes:
         - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
     env:
@@ -74,6 +80,8 @@ jobs:
     # Golrox: VM runner, in a container (no setup-ruby: it needs an Ubuntu host). Gems and the pnpm store stay on the VM.
     container:
       image: ruby:3.4.4-bookworm
+      # Golrox: the VM also runs prod. Low CPU weight: prod wins under contention. OOM: CI dies first, never Postgres.
+      options: --cpu-shares=256 --oom-score-adj=1000
       volumes:
         - /root/ci-cache/chatwoot/bundle:/bundle
         - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
@@ -106,9 +114,10 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --cpu-shares=256 --oom-score-adj=1000
       redis:
         image: redis:alpine
-        options: --entrypoint redis-server
+        options: --entrypoint redis-server --cpu-shares=256 --oom-score-adj=1000
 
     steps:
       - uses: actions/checkout@v4

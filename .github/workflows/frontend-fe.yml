@@ -20,6 +20,8 @@ jobs:
     # Golrox: VM runner, in a container (no setup-ruby: it needs an Ubuntu host). Gems and the pnpm store stay on the VM.
     container:
       image: ruby:3.4.4-bookworm
+      # Golrox: the VM also runs prod. Low CPU weight: prod wins under contention. OOM: CI dies first, never Postgres.
+      options: --cpu-shares=256 --oom-score-adj=1000
       volumes:
         - /root/ci-cache/chatwoot/bundle:/bundle
         - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
