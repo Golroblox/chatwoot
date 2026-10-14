@@ -14,10 +14,17 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   nightly:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, chatwoot]
+    # Golrox: the installer apt-installs Postgres, Redis and nginx; it must never touch the VM itself.
+    container:
+      image: ubuntu:24.04
     steps:
+
+    - name: Prepare container
+      run: apt-get update -qq && apt-get install -y -qq sudo wget
 
     - name: get installer
       run: |

@@ -8,9 +8,19 @@ on:
     branches:
       - develop
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, chatwoot]
+    # Golrox: VM runner, in a container (no setup-ruby: it needs an Ubuntu host). Gems and the pnpm store stay on the VM.
+    container:
+      image: ruby:3.4.4-bookworm
+      volumes:
+        - /root/ci-cache/chatwoot/bundle:/bundle
+        - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
+    env:
+      BUNDLE_PATH: /bundle
+      npm_config_store_dir: /pnpm-store
 
     steps:
       - uses: actions/checkout@v4
@@ -18,16 +28,14 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
-      - uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
+      - name: Bundle install
+        run: bundle install --jobs 8 --retry 3
 
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'pnpm'
 
       - name: Install pnpm dependencies
         run: pnpm install --frozen-lockfile

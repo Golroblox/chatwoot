@@ -10,9 +10,12 @@ concurrency:
   group: pr-${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   log_lines_check:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, chatwoot]
+    container:
+      image: buildpack-deps:bookworm-scm
 
     steps:
       - name: Checkout repository

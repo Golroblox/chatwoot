@@ -10,9 +10,16 @@ concurrency:
   group: pr-${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, chatwoot]
+    # Golrox: VM runner, in a container (no setup-ruby: it needs an Ubuntu host). Gems and the pnpm store stay on the VM.
+    container:
+      image: ruby:3.4.4-bookworm
+      volumes:
+        - /root/ci-cache/chatwoot/bundle:/bundle
+        - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
     # Only run if MFA test keys are available
     if: github.event_name == 'workflow_dispatch' || (github.repository == 'chatwoot/chatwoot' && github.actor != 'dependabot[bot]')
 
@@ -24,8 +31,6 @@ jobs:
           POSTGRES_PASSWORD: ''
           POSTGRES_DB: postgres
           POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
         options: >-
           --mount type=tmpfs,destination=/var/lib/postgresql/data
           --health-cmd pg_isready
@@ -34,13 +39,14 @@ jobs:
           --health-retries 5
       redis:
         image: redis
-        ports:
-          - 6379:6379
         options: --entrypoint redis-server
 
     env:
       RAILS_ENV: test
-      POSTGRES_HOST: localhost
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379
+      BUNDLE_PATH: /bundle
+      npm_config_store_dir: /pnpm-store
       # Active Record encryption keys required for MFA - test keys only, not for production use
       ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: 'test_key_a6cde8f7b9c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7'
       ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: 'test_key_b7def9a8c0d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d8'
@@ -49,16 +55,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
+      - name: Bundle install
+        run: bundle install --jobs 8 --retry 3
 
       - name: Create database
         run: bundle exec rake db:create
 
       - name: Install pgvector extension
         run: |
-          PGPASSWORD="" psql -h localhost -U postgres -d chatwoot_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          PGPASSWORD="" psql -h postgres -U postgres -d chatwoot_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Seed database
         run: bundle exec rake db:schema:load

@@ -7,6 +7,7 @@ on:
       - master
   workflow_dispatch:
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing). arm64 builds run under QEMU on the x64 VM.
 jobs:
   test-build:
     strategy:
@@ -14,11 +15,12 @@ jobs:
       matrix:
         include:
           - platform: linux/amd64
-            runner: ubuntu-latest
           - platform: linux/arm64
-            runner: ubuntu-22.04-arm
-    runs-on: ${{ matrix.runner }}
+    runs-on: [self-hosted, chatwoot]
     steps:
+      - name: Isolate docker config (Golrox VM runner)
+        run: echo "DOCKER_CONFIG=$RUNNER_TEMP/docker-config" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v4
 

@@ -3,11 +3,15 @@ name: Publish Codespace Base Image
 on:
   workflow_dispatch:
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   publish-code-space-image:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, chatwoot]
 
     steps:
+    - name: Isolate docker config (Golrox VM runner)
+      run: echo "DOCKER_CONFIG=$RUNNER_TEMP/docker-config" >> "$GITHUB_ENV"
+
     - uses: actions/checkout@v4
 
     - name: Login to GitHub Container Registry

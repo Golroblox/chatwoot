@@ -16,9 +16,12 @@ permissions:
 concurrency:
   group: lock
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   action:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, chatwoot]
+    container:
+      image: node:24-bookworm-slim
     if: ${{ github.repository == 'chatwoot/chatwoot' }}
     steps:
       - uses: dessant/lock-threads@v3

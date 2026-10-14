@@ -18,6 +18,7 @@ on:
 env:
   DOCKER_REPO: chatwoot/chatwoot
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing). arm64 builds run under QEMU on the x64 VM.
 jobs:
   build:
     strategy:
@@ -25,13 +26,14 @@ jobs:
       matrix:
         include:
           - platform: linux/amd64
-            runner: ubuntu-latest
           - platform: linux/arm64
-            runner: ubuntu-22.04-arm
-    runs-on: ${{ matrix.runner }}
+    runs-on: [self-hosted, chatwoot]
     env:
       GIT_REF: ${{ github.head_ref || github.ref_name }}
     steps:
+      - name: Isolate docker config (Golrox VM runner)
+        run: echo "DOCKER_CONFIG=$RUNNER_TEMP/docker-config" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -96,10 +98,13 @@ jobs:
           retention-days: 1
 
   merge:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, chatwoot]
     needs:
       - build
     steps:
+      - name: Isolate docker config (Golrox VM runner)
+        run: echo "DOCKER_CONFIG=$RUNNER_TEMP/docker-config" >> "$GITHUB_ENV"
+
       - name: Download digests
         uses: actions/download-artifact@v4
         with:

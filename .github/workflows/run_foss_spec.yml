@@ -9,27 +9,38 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   # Separate linting jobs for faster feedback
   lint-backend:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, chatwoot]
+    # Golrox: VM runner, in a container (no setup-ruby: it needs an Ubuntu host). Gems and the pnpm store stay on the VM.
+    container:
+      image: ruby:3.4.4-bookworm
+      volumes:
+        - /root/ci-cache/chatwoot/bundle:/bundle
+        - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
+    env:
+      BUNDLE_PATH: /bundle
+      npm_config_store_dir: /pnpm-store
     steps:
       - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
+      - name: Bundle install
+        run: bundle install --jobs 8 --retry 3
       - name: Run Rubocop
         run: bundle exec rubocop --parallel
 
   lint-frontend:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, chatwoot]
+    container:
+      image: node:24-bookworm
+      volumes:
+        - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
+    env:
+      npm_config_store_dir: /pnpm-store
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'pnpm'
       - name: Install pnpm dependencies
         run: pnpm i
       - name: Run ESLint
@@ -37,14 +48,16 @@ jobs:
 
   # Frontend tests run in parallel with backend
   frontend-tests:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, chatwoot]
+    container:
+      image: node:24-bookworm
+      volumes:
+        - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
+    env:
+      npm_config_store_dir: /pnpm-store
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'pnpm'
       - name: Install pnpm dependencies
         run: pnpm i
       - name: Run frontend tests
@@ -52,7 +65,19 @@ jobs:
 
   # Backend tests with parallelization
   backend-tests:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, chatwoot]
+    # Golrox: VM runner, in a container (no setup-ruby: it needs an Ubuntu host). Gems and the pnpm store stay on the VM.
+    container:
+      image: ruby:3.4.4-bookworm
+      volumes:
+        - /root/ci-cache/chatwoot/bundle:/bundle
+        - /root/ci-cache/chatwoot/pnpm-store:/pnpm-store
+    # Postgres and Redis by service name on the job network: the VM's own PostgreSQL and Redis hold 5432 and 6379.
+    env:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379
+      BUNDLE_PATH: /bundle
+      npm_config_store_dir: /pnpm-store
     strategy:
       fail-fast: false
       matrix:
@@ -67,8 +92,6 @@ jobs:
           POSTGRES_PASSWORD: ''
           POSTGRES_DB: postgres
           POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
         options: >-
           --mount type=tmpfs,destination=/var/lib/postgresql/data
           --health-cmd pg_isready
@@ -77,8 +100,6 @@ jobs:
           --health-retries 5
       redis:
         image: redis:alpine
-        ports:
-          - 6379:6379
         options: --entrypoint redis-server
 
     steps:
@@ -88,14 +109,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
-      - uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
+      - name: Bundle install
+        run: bundle install --jobs 8 --retry 3
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'pnpm'
 
       - name: Install pnpm dependencies
         run: pnpm i

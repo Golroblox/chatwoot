@@ -9,10 +9,13 @@ on:
   schedule:
   - cron: '28 3 * * *'
 
+# Golrox: every job runs on our VM (runner prod-chatwoot, label chatwoot), not GitHub-hosted (blocked for the org, billing).
 jobs:
   stale:
 
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, chatwoot]
+    container:
+      image: node:24-bookworm-slim
     permissions:
       pull-requests: write
 
